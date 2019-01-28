@@ -5,6 +5,7 @@
  :dependencies '[[org.clojure/clojure "1.9.0-alpha17"]
                  [twitter-api "1.8.0"]
                  [chulper "1.1.1"]
+                 [alex "0.0.5"]
                  [com.taoensso/tufte "1.1.0"]
                  [com.hypirion/clj-xchart "0.2.0"]
                  [org.clojure/core.cache "0.6.5"]

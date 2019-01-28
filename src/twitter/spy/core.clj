@@ -1,9 +1,10 @@
 (ns twitter.spy.core
-  (:require [chulper.core :as h]
+  (:require [chu.alex.core :as alex]
+            [chulper.core :as h]
             [clojure.core.cache :as cache]
             [clojure.core.matrix :as matrix]
             [clojure.data.json :as json]
-            [clojure.string :as string]
+            [clojure.string :as str]
             [clojure.xml :as xml]
             [com.hypirion.clj-xchart :as c]
             [twitter.api.restful :as tw]
@@ -161,7 +162,7 @@
 
 (defn- clean-mentions
   [tweet-text]
-  (string/trim (string/replace tweet-text #"@\w+" "")))
+  (str/trim (str/replace tweet-text #"@\w+" "")))
 
 (defn- doc-topics
   [doclist]
@@ -187,6 +188,8 @@
        (remove #{"t.co" "https" "rt" "http" "lt" "fr"})
        (take 100)))
 
+(declare w2v)
+
 (defn request
   [tl reqs]
   (let [token (memoize (comp tfidf/tokenize clean-mentions :text))
@@ -203,7 +206,7 @@
                  tl)]
     (reduce #(assoc %1 %2
                     (h/map-vals
-                     (fn [dl] (sim (tfidf/tokenize %2) (tfidf/tokenize (string/join " " (map (comp clean-mentions :text) dl)))))
+                     (fn [dl] (sim (tfidf/tokenize %2) (tfidf/tokenize (str/join " " (map (comp clean-mentions :text) dl)))))
                      distrib))
             {} reqs)))
 
@@ -216,3 +219,25 @@
      options
      identity
      (map first (vals rq)))))
+
+(defn build-alex
+  [tl]
+  (reset! alex/*gdr* {})
+  (reset! alex/*alexandrins*
+          (filter
+           #(<= 10 (chu.alex.phonetique/compte-syllabe %) 13)
+           (apply concat
+                  (pmap
+                   (comp chu.alex.extract/phrases clean-mentions :text)
+                   (remove :retweeted_status tl)))))
+  (alex/construire-gdr)
+  (println "done"))
+
+(defn tweet-sonnet
+  [creds screen-name]
+  (let [s (alex/sonnet)
+        f (str "/tmp/" (gensym "sonnet") ".png")]
+    (clojure.java.shell/sh "convert" (str "label:\"" s "\"") f)
+    (tw/statuses-update-with-media :oauth-creds creds
+                                   :body [(file-body-part f)
+                                          (status-body-part (str "fait depuis la TL de : " screen-name))])))
